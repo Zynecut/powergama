@@ -60,7 +60,7 @@ def main(year):
 
     print("System cost", sum(res.getSystemCost(timeMaxMin=[4, 6]).values()))
     print("Mean area price", sum(res.getAreaPricesAverage(timeMaxMin=[4, 6]).values()) / len(res.getAreaPricesAverage()))
-
+    # res.plotEnergyMix(relative=True)
 
 if __name__ == "__main__":
     main(YEAR)
