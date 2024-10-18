@@ -44,15 +44,18 @@ def node_plot():
     map_production_consumption = folium.Map(location=[mean_lat_nodes, mean_lon_nodes], zoom_start=5)
 
     for idx, row in nodes_df.iterrows():
-        # Finn forbruk og produksjon for noden (om de finnes)
+        # Finn forbruk og produksjon for noden
         consumption = consumers_with_location[consumers_with_location['node'] == row['id']]['demand_avg'].sum()
         production = producers_with_location[producers_with_location['node'] == row['id']]['pmax'].sum()
+        storage_cap = producers_with_location[producers_with_location['node'] == row['id']]['storage_cap'].sum()
 
         # Popup som viser både produksjon og forbruk, formatert og med bredde satt til 300 px
         popup_text = (
-            f"<b>Node:</b> {row['id']}<br>"
+            f"<b>Price area:</b> {row['zone']}<br>"
+            f"<b>Node ID:</b> {row['id']}<br>"
             f"<b>Average demand:</b> {consumption:.3f} MW<br>"
-            f"<b>Installed capacity:</b> {production:.3f} MW"
+            f"<b>Installed capacity:</b> {production:.3f} MW<br>"
+            f"<b>Storage capacity:</b> {storage_cap / 1e6:.3f} TWh"
         )
 
         popup = folium.Popup(popup_text, max_width=300)
@@ -61,6 +64,16 @@ def node_plot():
             location=[row['lat'], row['lon']],
             popup=popup,
         ).add_to(map_production_consumption)
+
+
+
+
+
+
+
+
+
+
 
     # Plotting av linjer mellom noder (branches)
     branches_file = scenario_power_syst_data / "branch.csv"
@@ -86,8 +99,35 @@ def node_plot():
             popup=popup  # Popup når du klikker på linjen
         ).add_to(map_production_consumption)
 
+    #     Plot DC links
+
+    DC_file = scenario_power_syst_data / "dcbranch.csv"
+    DC_df = pd.read_csv(DC_file)
+
+    # Merge for å hente koordinater for node_from og node_to
+    DC_with_coords = DC_df.merge(nodes_df[['id', 'lat', 'lon']], left_on='node_from', right_on='id', suffixes=('', '_from'))
+    DC_with_coords = DC_with_coords.merge(nodes_df[['id', 'lat', 'lon']], left_on='node_to', right_on='id', suffixes=('', '_to'))
+
+    for idx, row in DC_with_coords.iterrows():
+        popup_text = (
+            f"<b>DC-link:</b> {row['node_from']} - {row['node_to']}<br>"
+            f"<b>Capacity:</b> {row['capacity']:.3f} MW"
+        )
+        popup = folium.Popup(popup_text, max_width=300)
+
+        # Legg til linje med popup (ingen ekstra markør)
+        folium.PolyLine(
+            locations=[[row['lat'], row['lon']], [row['lat_to'], row['lon_to']]],  # Fra node_from til node_to
+            color='blue',
+            weight=2,
+            popup=popup  # Popup når du klikker på linjen
+        ).add_to(map_production_consumption)
+
     map_production_consumption.save(os.path.join('input_plots', 'production_consumption_map.html'))
 node_plot()
+
+
+
 
 def prod_distribution():
     # Geographic distribution of producers and their capacity
